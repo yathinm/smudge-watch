@@ -18,6 +18,7 @@ export default {
     ctx.waitUntil(
       runMonitor(repository, emailConfig(env), {
         now: controller.scheduledTime,
+        browser: env.BROWSER,
       }).then(async (stats) => {
         if (new Date(controller.scheduledTime).getUTCHours() === 8) {
           await repository.cleanup(

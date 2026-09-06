@@ -1,5 +1,6 @@
 export interface Env {
   DB: D1Database;
+  BROWSER?: BrowserRun;
   RESEND_API_KEY?: string;
   ALERT_EMAIL_TO?: string;
   ALERT_EMAIL_FROM?: string;

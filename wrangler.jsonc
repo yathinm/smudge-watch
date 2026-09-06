@@ -7,6 +7,9 @@
   "triggers": {
     "crons": ["* * * * *"],
   },
+  "browser": {
+    "binding": "BROWSER",
+  },
   "d1_databases": [
     {
       "binding": "DB",

@@ -52,6 +52,12 @@ describe("Nordstrom product parser", () => {
 
     expect(result.products[0]?.variants[0]?.availability).toBe("unavailable");
   });
+
+  it("recognizes Nordstrom's JavaScript interstitial as a challenge", () => {
+    expect(() =>
+      adapter.parse(response(`<script>window['istlWasHere'] = true;</script>`)),
+    ).toThrowError(expect.objectContaining({ name: "ChallengePageError" }));
+  });
 });
 
 function response(content: string) {

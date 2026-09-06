@@ -8,7 +8,12 @@ import type {
 } from "../persistence/types";
 import { SourceParseError } from "../sources/errors";
 import { adapterFor, SOURCES } from "../sources/registry";
-import { fetchSource, safeError, SourceFetchError } from "./fetcher";
+import {
+  fetchRenderedSource,
+  fetchSource,
+  safeError,
+  SourceFetchError,
+} from "./fetcher";
 
 const LEASE_TTL_MS = 45_000;
 
@@ -25,6 +30,7 @@ export interface MonitorOptions {
   force?: boolean;
   now?: number;
   fetcher?: typeof fetch;
+  browser?: BrowserRun;
 }
 
 export async function runMonitor(
@@ -54,7 +60,7 @@ export async function runMonitor(
     stats.checked += 1;
     try {
       const startedAt = Date.now();
-      const fetched = await fetchSource(source, now, fetcher);
+      let fetched = await fetchSource(source, now, fetcher);
       if (fetched.notModified) {
         await repository.recordObservation(source.id, {
           checkedAt: now,
@@ -65,7 +71,21 @@ export async function runMonitor(
       } else {
         if (!fetched.response)
           throw new SourceParseError("fetch result did not include a response");
-        const parsed = adapterForSource(source).parse(fetched.response);
+        let parsed;
+        try {
+          parsed = adapterForSource(source).parse(fetched.response);
+        } catch (error) {
+          if (!(error instanceof SourceParseError) || !options.browser) {
+            throw error;
+          }
+          fetched = await fetchRenderedSource(source, options.browser);
+          if (!fetched.response) {
+            throw new SourceParseError(
+              "browser fetch result did not include a response",
+            );
+          }
+          parsed = adapterForSource(source).parse(fetched.response);
+        }
         if (source.kind === "product" && parsed.products.length === 0) {
           throw new SourceParseError("product parser did not return a product");
         }

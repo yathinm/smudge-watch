@@ -32,13 +32,7 @@ export async function fetchSource(
   now: number,
   fetcher: typeof fetch = fetch,
 ): Promise<FetchResult> {
-  const url = new URL(source.url);
-  if (url.protocol !== "https:" || !ALLOWED_HOSTS.has(url.hostname)) {
-    throw new SourceFetchError(
-      "source URL is not allowlisted",
-      "invalid_source_url",
-    );
-  }
+  const url = validateSourceUrl(source.url);
 
   const headers = new Headers({
     Accept:
@@ -118,6 +112,107 @@ export async function fetchSource(
     ...responseValidators(result),
     contentHash: await sha256(body),
   };
+}
+
+interface BrowserContentResponse {
+  success: boolean;
+  result?: string;
+  meta?: {
+    status?: number;
+    finalUrl?: string;
+    headers?: Record<string, string>;
+  };
+  errors?: Array<{ message?: string }>;
+}
+
+export async function fetchRenderedSource(
+  source: StoredSource,
+  browser: BrowserRun,
+): Promise<FetchResult> {
+  validateSourceUrl(source.url);
+
+  let result: Response;
+  try {
+    result = await browser.quickAction("content", {
+      url: source.url,
+      gotoOptions: {
+        timeout: REQUEST_TIMEOUT_MS,
+        waitUntil: "domcontentloaded",
+      },
+      waitForSelector: {
+        selector: source.kind === "sitemap" ? "body" : "h1",
+        timeout: REQUEST_TIMEOUT_MS,
+      },
+      waitForTimeout: 750,
+      rejectResourceTypes: ["image", "media", "font"],
+      cacheTTL: 0,
+      bestAttempt: true,
+    });
+  } catch (error) {
+    throw new SourceFetchError(safeError(error), "browser_network_error");
+  }
+
+  let payload: BrowserContentResponse;
+  try {
+    payload = (await result.json()) as BrowserContentResponse;
+  } catch {
+    throw new SourceFetchError(
+      "browser renderer returned an invalid response",
+      "browser_invalid_response",
+      result.status,
+    );
+  }
+
+  if (!result.ok || !payload.success || typeof payload.result !== "string") {
+    const detail = payload.errors?.[0]?.message?.slice(0, 300);
+    throw new SourceFetchError(
+      detail ? `browser renderer failed: ${detail}` : "browser renderer failed",
+      `browser_http_${result.status}`,
+      result.status,
+    );
+  }
+
+  const status = payload.meta?.status ?? 200;
+  if (status < 200 || status >= 300) {
+    throw new SourceFetchError(
+      `rendered source returned HTTP ${status}`,
+      `http_${status}`,
+      status,
+    );
+  }
+  const body = payload.result;
+  if (new TextEncoder().encode(body).byteLength > MAX_RESPONSE_BYTES) {
+    throw new SourceFetchError(
+      "rendered source response exceeds size limit",
+      "response_too_large",
+      status,
+    );
+  }
+
+  const headers = new Headers(payload.meta?.headers);
+  const contentType = headers.get("Content-Type") ?? "text/html";
+  return {
+    response: {
+      url: payload.meta?.finalUrl ?? source.url,
+      status,
+      contentType,
+      body,
+    },
+    notModified: false,
+    status,
+    contentHash: await sha256(body),
+  };
+}
+
+function validateSourceUrl(value: string): URL {
+  const url = new URL(value);
+  if (url.protocol !== "https:" || !ALLOWED_HOSTS.has(url.hostname)) {
+    throw new SourceFetchError(
+      "source URL is not allowlisted",
+      "invalid_source_url",
+    );
+  }
+  return url;
 }
 
 function responseValidators(response: Response): {

@@ -12,14 +12,7 @@ import { ChallengePageError, SourceParseError } from "./errors";
 type JsonRecord = Record<string, unknown>;
 
 export function assertUsableHtml(body: string): void {
-  const normalized = body.toLowerCase();
-  if (
-    normalized.includes("cf-chl-") ||
-    normalized.includes("challenge-platform") ||
-    normalized.includes("cf-mitigated") ||
-    normalized.includes("just a moment...") ||
-    normalized.includes("captcha")
-  ) {
+  if (isChallengeHtml(body)) {
     throw new ChallengePageError("source returned an access challenge");
   }
   if (body.trim().length < 100) {
@@ -27,6 +20,19 @@ export function assertUsableHtml(body: string): void {
       "source returned an unexpectedly small document",
     );
   }
+}
+
+export function isChallengeHtml(body: string): boolean {
+  const normalized = body.toLowerCase();
+  return [
+    "cf-chl-",
+    "challenge-platform",
+    "cf-mitigated",
+    "just a moment...",
+    "captcha",
+    "istlwashere",
+    "istl-infinite-loop",
+  ].some((marker) => normalized.includes(marker));
 }
 
 export function jsonLdRecords(html: string): JsonRecord[] {

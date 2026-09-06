@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { fetchSource, SourceFetchError } from "../src/monitoring/fetcher";
+import {
+  fetchRenderedSource,
+  fetchSource,
+  SourceFetchError,
+} from "../src/monitoring/fetcher";
 import type { StoredSource } from "../src/persistence/types";
 
 describe("source fetcher", () => {
@@ -71,6 +75,52 @@ describe("source fetcher", () => {
     }
     expect(caught).toBeInstanceOf(SourceFetchError);
     expect(caught).toMatchObject({ status: 429, retryAt: now + 120_000 });
+  });
+
+  it("returns fully rendered HTML from the browser binding", async () => {
+    const body = `<html><body><h1>Smudge Monkey</h1>${"x".repeat(120)}</body></html>`;
+    const quickAction = vi.fn().mockResolvedValue(
+      Response.json({
+        success: true,
+        result: body,
+        meta: {
+          status: 200,
+          finalUrl: "https://us.jellycat.com/smudge-monkey/",
+          headers: { "content-type": "text/html" },
+        },
+      }),
+    );
+
+    const result = await fetchRenderedSource(source(), {
+      quickAction,
+    } as unknown as BrowserRun);
+
+    expect(result.response?.body).toBe(body);
+    expect(result.contentHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(quickAction).toHaveBeenCalledWith(
+      "content",
+      expect.objectContaining({
+        url: "https://us.jellycat.com/smudge-monkey/",
+        cacheTTL: 0,
+      }),
+    );
+  });
+
+  it("fails closed when the browser renderer returns an error", async () => {
+    const quickAction = vi
+      .fn()
+      .mockResolvedValue(
+        Response.json(
+          { success: false, errors: [{ message: "rate limited" }] },
+          { status: 429 },
+        ),
+      );
+
+    await expect(
+      fetchRenderedSource(source(), {
+        quickAction,
+      } as unknown as BrowserRun),
+    ).rejects.toMatchObject({ code: "browser_http_429", status: 429 });
   });
 });
 

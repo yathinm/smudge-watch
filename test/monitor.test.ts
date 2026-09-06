@@ -91,6 +91,36 @@ describe("monitor orchestration", () => {
       expect.objectContaining({ type: "source_recovered" }),
     );
   });
+
+  it("uses browser rendering when a product page is challenged", async () => {
+    const source = storedSource();
+    const repository = fakeRepository({ dueSources: [source] });
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        new Response(
+          `<html><body><script>window['istlWasHere'] = true</script>${" ".repeat(120)}</body></html>`,
+          { status: 200, headers: { "Content-Type": "text/html" } },
+        ),
+      );
+    const quickAction = vi.fn().mockResolvedValue(
+      Response.json({
+        success: true,
+        result: productHtml("https://schema.org/InStock"),
+        meta: { status: 200, finalUrl: source.url },
+      }),
+    );
+
+    const stats = await runMonitor(repository, undefined, {
+      now: 4_000,
+      fetcher,
+      browser: { quickAction } as unknown as BrowserRun,
+    });
+
+    expect(stats).toMatchObject({ succeeded: 1, failed: 0 });
+    expect(quickAction).toHaveBeenCalledOnce();
+    expect(repository.applyProducts).toHaveBeenCalledOnce();
+  });
 });
 
 function productHtml(availability: string): string {
