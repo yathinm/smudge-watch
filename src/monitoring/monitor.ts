@@ -16,6 +16,7 @@ import {
 } from "./fetcher";
 
 const LEASE_TTL_MS = 45_000;
+const BROWSER_ACTION_INTERVAL_MS = 10_000;
 
 export interface MonitorStats {
   checked: number;
@@ -49,6 +50,22 @@ export async function runMonitor(
     emailsAccepted: 0,
     emailsFailed: 0,
   };
+  let lastBrowserActionAt: number | undefined;
+
+  const renderSource = async (source: StoredSource) => {
+    if (!options.browser) {
+      throw new SourceParseError("browser rendering is not configured");
+    }
+    if (lastBrowserActionAt !== undefined) {
+      const remaining =
+        BROWSER_ACTION_INTERVAL_MS - (Date.now() - lastBrowserActionAt);
+      if (remaining > 0) {
+        await new Promise((resolve) => setTimeout(resolve, remaining));
+      }
+    }
+    lastBrowserActionAt = Date.now();
+    return fetchRenderedSource(source, options.browser);
+  };
 
   await repository.ensureSources(SOURCES, now);
   await repository.startRun(runId, now);
@@ -60,7 +77,20 @@ export async function runMonitor(
     stats.checked += 1;
     try {
       const startedAt = Date.now();
-      let fetched = await fetchSource(source, now, fetcher, options.browser);
+      let fetched;
+      try {
+        fetched = await fetchSource(source, now, fetcher);
+      } catch (error) {
+        if (
+          source.kind !== "product" ||
+          !options.browser ||
+          !(error instanceof SourceFetchError) ||
+          error.status !== 403
+        ) {
+          throw error;
+        }
+        fetched = await renderSource(source);
+      }
       if (fetched.notModified) {
         await repository.recordObservation(source.id, {
           checkedAt: now,
@@ -78,7 +108,8 @@ export async function runMonitor(
           if (!(error instanceof SourceParseError) || !options.browser) {
             throw error;
           }
-          fetched = await fetchRenderedSource(source, options.browser);
+          if (source.kind !== "product") throw error;
+          fetched = await renderSource(source);
           if (!fetched.response) {
             throw new SourceParseError(
               "browser fetch result did not include a response",

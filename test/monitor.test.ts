@@ -121,6 +121,30 @@ describe("monitor orchestration", () => {
     expect(quickAction).toHaveBeenCalledOnce();
     expect(repository.applyProducts).toHaveBeenCalledOnce();
   });
+
+  it("uses browser rendering after a forbidden product response", async () => {
+    const source = storedSource();
+    const repository = fakeRepository({ dueSources: [source] });
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response("forbidden", { status: 403 }));
+    const quickAction = vi.fn().mockResolvedValue(
+      Response.json({
+        success: true,
+        result: productHtml("https://schema.org/OutOfStock"),
+        meta: { status: 200, finalUrl: source.url },
+      }),
+    );
+
+    const stats = await runMonitor(repository, undefined, {
+      now: 5_000,
+      fetcher,
+      browser: { quickAction } as unknown as BrowserRun,
+    });
+
+    expect(stats).toMatchObject({ succeeded: 1, failed: 0 });
+    expect(quickAction).toHaveBeenCalledOnce();
+  });
 });
 
 function productHtml(availability: string): string {
