@@ -1,0 +1,36 @@
+{
+  "name": "smudge-watch",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test:run",
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev --test-scheduled",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "test": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:run": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "cheerio": "1.2.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20260906.1",
+    "@eslint/js": "10.0.1",
+    "@vitest/coverage-v8": "5.0.0",
+    "eslint": "10.10.0",
+    "prettier": "3.9.6",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.69.0",
+    "vitest": "5.0.0",
+    "wrangler": "4.129.0"
+  }
+}
