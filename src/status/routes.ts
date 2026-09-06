@@ -53,7 +53,10 @@ export async function handleRequest(
     }
     if (url.pathname === "/admin/run") {
       return Response.json(
-        await runMonitor(repository, emailConfig(env), { force: true }),
+        await runMonitor(repository, emailConfig(env), {
+          force: true,
+          browser: env.BROWSER,
+        }),
       );
     }
     if (url.pathname === "/admin/test-email") {

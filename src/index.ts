@@ -20,7 +20,11 @@ export default {
         now: controller.scheduledTime,
         browser: env.BROWSER,
       }).then(async (stats) => {
-        if (new Date(controller.scheduledTime).getUTCHours() === 8) {
+        const scheduledAt = new Date(controller.scheduledTime);
+        if (
+          scheduledAt.getUTCHours() === 8 &&
+          scheduledAt.getUTCMinutes() === 0
+        ) {
           await repository.cleanup(
             controller.scheduledTime - 30 * 24 * 60 * 60 * 1000,
           );

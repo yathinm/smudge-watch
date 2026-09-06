@@ -106,6 +106,26 @@ describe("source fetcher", () => {
     );
   });
 
+  it("uses browser rendering after a forbidden direct response", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response("forbidden", { status: 403 }));
+    const quickAction = vi.fn().mockResolvedValue(
+      Response.json({
+        success: true,
+        result: `<html><body><h1>Smudge Monkey</h1>${"x".repeat(120)}</body></html>`,
+        meta: { status: 200 },
+      }),
+    );
+
+    const result = await fetchSource(source(), Date.now(), fetcher, {
+      quickAction,
+    } as unknown as BrowserRun);
+
+    expect(result.status).toBe(200);
+    expect(quickAction).toHaveBeenCalledOnce();
+  });
+
   it("fails closed when the browser renderer returns an error", async () => {
     const quickAction = vi
       .fn()

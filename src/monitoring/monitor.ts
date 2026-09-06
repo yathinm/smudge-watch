@@ -60,7 +60,7 @@ export async function runMonitor(
     stats.checked += 1;
     try {
       const startedAt = Date.now();
-      let fetched = await fetchSource(source, now, fetcher);
+      let fetched = await fetchSource(source, now, fetcher, options.browser);
       if (fetched.notModified) {
         await repository.recordObservation(source.id, {
           checkedAt: now,

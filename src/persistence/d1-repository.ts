@@ -221,10 +221,13 @@ export class D1MonitorRepository implements MonitorRepository {
   ): Promise<SourceFailureResult> {
     const failures = source.consecutiveFailures + 1;
     const shouldNotify = failures >= 3 && !source.failureNotified;
-    const exponentialDelay = Math.min(
-      source.pollIntervalSeconds * 1000 * 2 ** Math.max(0, failures - 2),
-      60 * 60 * 1000,
-    );
+    const exponentialDelay =
+      source.kind === "product"
+        ? source.pollIntervalSeconds * 1000
+        : Math.min(
+            source.pollIntervalSeconds * 1000 * 2 ** Math.max(0, failures - 2),
+            60 * 60 * 1000,
+          );
     const nextPollAt = Math.max(
       observation.checkedAt + exponentialDelay,
       retryAt ?? observation.checkedAt,

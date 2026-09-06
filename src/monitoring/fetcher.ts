@@ -31,6 +31,7 @@ export async function fetchSource(
   source: StoredSource,
   now: number,
   fetcher: typeof fetch = fetch,
+  browser?: BrowserRun,
 ): Promise<FetchResult> {
   const url = validateSourceUrl(source.url);
 
@@ -62,6 +63,9 @@ export async function fetchSource(
     };
   }
   if (!result.ok) {
+    if (result.status === 403 && browser) {
+      return fetchRenderedSource(source, browser);
+    }
     const retryAt = parseRetryAfter(result.headers.get("Retry-After"), now);
     throw new SourceFetchError(
       `source returned HTTP ${result.status}`,

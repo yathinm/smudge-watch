@@ -9,12 +9,13 @@
   },
   "browser": {
     "binding": "BROWSER",
+    "remote": true,
   },
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "smudge-watch",
-      "database_id": "local-smudge-watch",
+      "database_id": "1dd14fd7-4fbc-47ba-90ec-2b57eb3b1f1a",
       "migrations_dir": "migrations",
     },
   ],
