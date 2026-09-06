@@ -583,7 +583,7 @@ export class D1MonitorRepository implements MonitorRepository {
 
   async getHealth(): Promise<{ sources: StoredSource[]; lastRunAt?: number }> {
     const sources = await this.db
-      .prepare("SELECT * FROM sources ORDER BY id")
+      .prepare("SELECT * FROM sources WHERE enabled = 1 ORDER BY id")
       .all<SourceRow>();
     const lastRun = await this.db
       .prepare(
