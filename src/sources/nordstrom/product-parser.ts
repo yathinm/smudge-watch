@@ -98,7 +98,7 @@ export class NordstromProductAdapter implements SourceAdapter {
           : "medium",
       products: [
         {
-          key: normalizedKey(externalId ?? new URL(canonical).pathname),
+          key: normalizedKey(new URL(canonical).pathname),
           ...(externalId ? { externalId } : {}),
           retailer: "nordstrom-us",
           name,

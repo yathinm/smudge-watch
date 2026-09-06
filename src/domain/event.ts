@@ -37,5 +37,6 @@ export function eventFingerprint(event: ProductEvent): string {
     event.type,
     event.availability ?? "none",
     event.priceMinor ?? "none",
+    event.detectedAt,
   ].join(":");
 }

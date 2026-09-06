@@ -45,7 +45,7 @@ export class JellycatProductAdapter implements SourceAdapter {
         confidence: "high",
         products: [
           {
-            key: normalizedKey(externalId ?? new URL(url).pathname),
+            key: normalizedKey(new URL(url).pathname),
             ...(externalId ? { externalId } : {}),
             retailer: "jellycat-us",
             name,

@@ -106,6 +106,11 @@ export class D1MonitorRepository implements MonitorRepository {
     now: number,
   ): Promise<void> {
     if (product.retailer !== "jellycat-us") return;
+    const existing = await this.db
+      .prepare("SELECT id FROM sources WHERE url = ?")
+      .bind(product.canonicalUrl)
+      .first<{ id: string }>();
+    if (existing) return;
     const id = `jellycat-product-${normalizedKey(new URL(product.canonicalUrl).pathname)}`;
     await this.ensureSources(
       [
