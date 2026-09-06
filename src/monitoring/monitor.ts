@@ -16,7 +16,7 @@ import {
 } from "./fetcher";
 
 const LEASE_TTL_MS = 45_000;
-const BROWSER_ACTION_INTERVAL_MS = 10_000;
+const BROWSER_ACTION_INTERVAL_MS = 12_000;
 
 export interface MonitorStats {
   checked: number;
