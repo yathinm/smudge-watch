@@ -37,6 +37,8 @@ describe("Nordstrom product parser", () => {
     );
 
     expect(result.products[0]?.variants[0]).toMatchObject({
+      key: "333333r99p",
+      externalId: "333333R99P",
       priceMinor: 3800,
       currency: "USD",
       availability: "available",
@@ -51,6 +53,23 @@ describe("Nordstrom product parser", () => {
     );
 
     expect(result.products[0]?.variants[0]?.availability).toBe("unavailable");
+  });
+
+  it("prefers the visible retired state and ignores placeholder pricing", () => {
+    const result = adapter.parse(
+      response(`
+      <script type="application/ld+json">
+        {"@type":"Product","name":"Smudge Monkey Plushie","url":"${url}","offers":{"@type":"Offer","price":"0.00","priceCurrency":"USD","availability":"https://schema.org/OutOfStock"}}
+      </script>
+      <main><h1>Smudge Monkey Plushie</h1><p>This item is no longer available.</p><p>Core Product ID 333333R99P</p></main>
+    `),
+    );
+
+    expect(result.products[0]?.variants[0]).toMatchObject({
+      key: "333333r99p",
+      availability: "retired",
+    });
+    expect(result.products[0]?.variants[0]?.priceMinor).toBeUndefined();
   });
 
   it("recognizes Nordstrom's JavaScript interstitial as a challenge", () => {

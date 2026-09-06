@@ -371,6 +371,20 @@ export class D1MonitorRepository implements MonitorRepository {
           );
         }
       }
+
+      if (source.kind === "product" && product.variants.length > 0) {
+        const placeholders = product.variants.map(() => "?").join(", ");
+        await this.db
+          .prepare(
+            `DELETE FROM variants WHERE product_id = ? AND variant_key != 'listing'
+             AND variant_key NOT IN (${placeholders})`,
+          )
+          .bind(
+            storedProduct.id,
+            ...product.variants.map((variant) => variant.key),
+          )
+          .run();
+      }
     }
 
     const created: ProductEvent[] = [];
