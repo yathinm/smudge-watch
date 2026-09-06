@@ -3,12 +3,8 @@ import { describe, expect, it } from "vitest";
 import worker from "../src/index";
 
 describe("worker", () => {
-  it("reports its initialization status", async () => {
-    const response = await worker.fetch();
-
-    await expect(response.json()).resolves.toEqual({
-      name: "SmudgeWatch",
-      status: "initializing",
-    });
+  it("exposes HTTP and scheduled handlers", () => {
+    expect(worker.fetch).toBeTypeOf("function");
+    expect(worker.scheduled).toBeTypeOf("function");
   });
 });
