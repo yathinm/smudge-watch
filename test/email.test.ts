@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { ProductEvent } from "../src/domain/event";
+import { deliverPendingEmails } from "../src/email/delivery";
 import { sendWithResend, EmailSendError } from "../src/email/resend-client";
 import { eventEmail } from "../src/email/templates";
+import type { MonitorRepository } from "../src/persistence/types";
 
 const config = {
   apiKey: "secret-key-used-only-in-test",
@@ -79,6 +81,58 @@ describe("Resend client", () => {
   });
 });
 
+describe("email delivery", () => {
+  it("marks an accepted delivery with its provider ID", async () => {
+    const repository = deliveryRepository();
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        Response.json({ id: "email_accepted" }, { status: 200 }),
+      );
+
+    await expect(
+      deliverPendingEmails(repository, config, 1_000, fetcher),
+    ).resolves.toEqual({
+      accepted: 1,
+      failed: 0,
+    });
+    expect(repository.markDeliveryAccepted).toHaveBeenCalledWith(
+      "event-fingerprint",
+      "email_accepted",
+      1_000,
+    );
+  });
+
+  it("schedules retry after a temporary failure", async () => {
+    const repository = deliveryRepository();
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        Response.json({ message: "rate limited" }, { status: 429 }),
+      );
+
+    await deliverPendingEmails(repository, config, 2_000, fetcher);
+
+    expect(repository.markDeliveryFailed).toHaveBeenCalledWith(
+      "event-fingerprint",
+      "rate limited",
+      62_000,
+      2_000,
+    );
+  });
+
+  it("keeps deliveries queued when email is not configured", async () => {
+    const repository = deliveryRepository();
+    await expect(
+      deliverPendingEmails(repository, undefined, 1_000),
+    ).resolves.toEqual({
+      accepted: 0,
+      failed: 0,
+    });
+    expect(repository.listPendingDeliveries).not.toHaveBeenCalled();
+  });
+});
+
 function restockEvent(): ProductEvent {
   return {
     type: "restocked",
@@ -93,4 +147,18 @@ function restockEvent(): ProductEvent {
     purchaseUrl: "https://www.nordstrom.com/s/product/123",
     detectedAt: Date.UTC(2026, 8, 5, 20, 0),
   };
+}
+
+function deliveryRepository(): MonitorRepository {
+  return {
+    listPendingDeliveries: vi.fn(async () => [
+      {
+        eventFingerprint: "event-fingerprint",
+        event: restockEvent(),
+        attemptCount: 0,
+      },
+    ]),
+    markDeliveryAccepted: vi.fn(async () => undefined),
+    markDeliveryFailed: vi.fn(async () => undefined),
+  } as unknown as MonitorRepository;
 }

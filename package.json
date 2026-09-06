@@ -6,6 +6,8 @@
   "scripts": {
     "build": "wrangler deploy --dry-run --outdir dist",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run test:run",
+    "db:migrate:local": "wrangler d1 migrations apply smudge-watch --local",
+    "db:migrate:remote": "wrangler d1 migrations apply smudge-watch --remote",
     "deploy": "wrangler deploy",
     "dev": "wrangler dev --test-scheduled",
     "format": "prettier --write .",
