@@ -7,6 +7,14 @@
   "triggers": {
     "crons": ["* * * * *"],
   },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "smudge-watch",
+      "database_id": "local-smudge-watch",
+      "migrations_dir": "migrations",
+    },
+  ],
   "observability": {
     "enabled": true,
   },
